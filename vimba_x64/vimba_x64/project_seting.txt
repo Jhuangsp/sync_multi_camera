@@ -1,0 +1,8 @@
+Other Include dir:
+C:\opencv\build\include;.\VimbaC\Include;.\VimbaCPP\Include;.\VimbaImageTransform\Include;%(AdditionalIncludeDirectories)
+
+Other library dir:
+C:\opencv\build\x64\vc15\lib;.\VimbaC\Lib\Win64;.\VimbaCPP\Lib\Win64;.\VimbaImageTransform\Lib\Win64;%(AdditionalLibraryDirectories)
+
+Other dependency:
+opencv_world349d.lib;VimbaC.lib;VimbaCPP.lib;VimbaImageTransform.lib;
