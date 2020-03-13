@@ -3,6 +3,7 @@
 #include "VimbaC.h"
 #include "VimbaCPP.h"
 #include <opencv2/opencv.hpp>
+#include <conio.h>
 
 using namespace std;
 using namespace AVT::VmbAPI;
@@ -47,11 +48,14 @@ public:
 	// In your contructor call the constructor of the base class
 	// and pass a camera objectt
 	string name;
+	Mat cvMat;
+	CameraPtr pCamera;
 	FrameObserver(CameraPtr pCamera, string s) : IFrameObserver(pCamera)
 	{
 		// Put your initialization code here
 		cout << "Init FrameObserver" << endl;
 		name = s;
+		this->pCamera = pCamera;
 	}
 
 	void FrameReceived(const FramePtr pFrame)
@@ -77,12 +81,12 @@ public:
 				if (VmbErrorSuccess != pFrame->GetImage(pImage))
 					cout << "FAILED to acquire image data of frame!" << endl;
 				//cout << nHeight << nWidth << endl;
-				Mat cvMat = Mat(nHeight, nWidth, CV_8UC1, pImage);
+				cvMat = Mat(nHeight, nWidth, CV_8UC1, pImage);
 				// My camera is set up to publish BayerBG. It's an efficient codec.
 				//cvtColor(cvMat, cvMat, CV_BayerBG2RGB);
 
 				imshow("Our Great Window" + name, cvMat);
-				imwrite("C:\\Users\\NOL\\Desktop\\" + name + ".png", cvMat);
+				//imwrite("C:\\Users\\NOL\\Desktop\\" + name + ".png", cvMat);
 				waitKey(1);
 			}
 			else
@@ -163,8 +167,13 @@ int main() {
 	err = pFeature->GetValue(nPLS1);
 
 	// Attach observer
-	IFrameObserverPtr pObserver0(new FrameObserver(cameras[0], "0"));
-	IFrameObserverPtr pObserver1(new FrameObserver(cameras[1], "1"));
+	FrameObserver *pOb0, *pOb1;
+	pOb0 = new FrameObserver(cameras[0], "0");
+	pOb1 = new FrameObserver(cameras[1], "1");
+	IFrameObserverPtr pObserver0(pOb0);
+	IFrameObserverPtr pObserver1(pOb1);
+	//IFrameObserverPtr pObserver0(new FrameObserver(cameras[0], "0"));
+	//IFrameObserverPtr pObserver1(new FrameObserver(cameras[1], "1"));
 	for (FramePtrVector::iterator iter0 = frames0.begin(), iter1 = frames1.begin();
 		frames0.end() != iter0 || frames1.end() != iter1;
 		++iter0, ++iter1)
@@ -198,10 +207,15 @@ int main() {
 
 
 	// Send Action Command
-	char c;
-	while (cin >> c)
+	char key = 0;
+	while (key != 27) // press ESC to exit
 	{
-		if (c == 'a') break;
+		if (key == 32) // press SPACE to pause
+		{
+			cout << "press Enter tp continue" << endl;
+			cin.ignore();
+			key = 0;
+		}
 		// Set Action Command to Vimba API
 		sys.GetFeatureByName("ActionDeviceKey", pFeature);
 		pFeature->SetValue(deviceKey);
@@ -211,6 +225,11 @@ int main() {
 		pFeature->SetValue(groupMask);
 		sys.GetFeatureByName("ActionCommand", pFeature);
 		pFeature->RunCommand();
+
+		// Get keypress in non-blocking way
+		if (_kbhit()) {
+			key = _getch();
+		}
 	}
 
 	// Program runtime ... e.g., Sleep(2000);
