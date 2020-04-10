@@ -4,6 +4,7 @@
 #include "VimbaCPP.h"
 #include <opencv2/opencv.hpp>
 #include <conio.h>
+#include "utils.h"
 
 using namespace std;
 using namespace AVT::VmbAPI;
@@ -63,11 +64,11 @@ public:
 		VmbFrameStatusType eReceiveStatus;
 		if (VmbErrorSuccess == pFrame->GetReceiveStatus(eReceiveStatus))
 		{
-			cout << "Frame received" << endl;
+			//cout << "Frame received" << endl;
 			if (VmbFrameStatusComplete == eReceiveStatus)
 			{
 				// Put your code here to react on a successfully received frame
-				cout << "Frame received successfully" << endl;
+				//cout << "Frame received successfully" << endl;
 				VmbUchar_t *pImage = NULL;
 				VmbUint32_t timeout = 500;
 				VmbUint32_t nWidth = 10;
@@ -80,10 +81,8 @@ public:
 
 				if (VmbErrorSuccess != pFrame->GetImage(pImage))
 					cout << "FAILED to acquire image data of frame!" << endl;
-				//cout << nHeight << nWidth << endl;
 				cvMat = Mat(nHeight, nWidth, CV_8UC1, pImage);
-				// My camera is set up to publish BayerBG. It's an efficient codec.
-				//cvtColor(cvMat, cvMat, CV_BayerBG2RGB);
+				//cvtColor(cvMat, cvMat, CV_BayerBG2BGR);
 
 				imshow("Our Great Window" + name, cvMat);
 				//imwrite("C:\\Users\\NOL\\Desktop\\" + name + ".png", cvMat);
@@ -210,9 +209,11 @@ int main() {
 	char key = 0;
 	while (key != 27) // press ESC to exit
 	{
-		if (key == 32) // press SPACE to pause
+		if (key == 32) // press SPACE to pause and store image
 		{
 			cout << "press Enter tp continue" << endl;
+			imwrite("C:\\Users\\NOL\\Desktop\\0.png", pOb0->cvMat);
+			imwrite("C:\\Users\\NOL\\Desktop\\1.png", pOb0->cvMat);
 			cin.ignore();
 			key = 0;
 		}
@@ -252,3 +253,45 @@ int main() {
 	cout << "end" << endl;
 	return 0;
 }
+
+
+
+// int main() {
+
+// 	Mat img0, img1;
+// 	img0 = imread("C:\\Users\\NOL\\Desktop\\0.png", -1);
+// 	img1 = imread("C:\\Users\\NOL\\Desktop\\1.png", -1);
+// 	cvtColor(img0, img0, CV_BayerBG2BGR);
+// 	cvtColor(img1, img1, CV_BayerBG2BGR);
+
+// 	img0 = PerfectReflectionAlgorithm(img0);
+// 	img1 = PerfectReflectionAlgorithm(img1);
+// 	imwrite("C:\\Users\\NOL\\Desktop\\0b.png", img0);
+// 	imwrite("C:\\Users\\NOL\\Desktop\\1b.png", img1);
+
+// 	imshow("0", img0);
+// 	imshow("1", img1);
+// 	waitKey(0);
+
+// 	return 0;
+// }
+
+//int main() {
+//
+//	Mat img;
+//
+//	img = Mat(2, 2, CV_8UC3, Scalar(70,60,50));
+//	cout << img.at<Vec3b>(0, 0) << endl;
+//	cout << img.at<Vec3b>(0, 1) << endl;
+//	cout << img.at<Vec3b>(1, 0) << endl;
+//	cout << img.at<Vec3b>(1, 1) << endl;
+//	cout << img.mul(Scalar(1, 2, 3)) << endl;
+//
+//	img.convertTo(img, CV_16UC3);
+//	Mat tt = img.mul(Scalar(10000, 20, 30));
+//	cout << tt << endl;
+//	tt.convertTo(tt, CV_8UC3);
+//	cout << tt << endl;
+//
+//	return 0;
+//}
