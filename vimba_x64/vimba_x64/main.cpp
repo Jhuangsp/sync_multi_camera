@@ -1,14 +1,27 @@
 #include <iostream>
 #include <string>
-#include "VimbaC.h"
-#include "VimbaCPP.h"
 #include <opencv2/opencv.hpp>
 #include <conio.h>
+#include <vector>
+#include "VimbaC.h"
+#include "VimbaCPP.h"
 #include "utils.h"
+
+#include <cstring>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/videoio.hpp>
+#include <cstdio>
 
 using namespace std;
 using namespace AVT::VmbAPI;
 using namespace cv;
+
+#define PAT_ROWS   (6)    // Rows of pattern
+#define PAT_COLS   (9)    // Columns of pattern
+#define CHESS_SIZE (28.0) // Size of a pattern [mm]
 
 void test_opencv() {
 	/* Canvas */
@@ -99,7 +112,8 @@ public:
 	}
 };
 
-int main() {
+
+int main1() {
 	cout << "hi" << endl;
 
 	// Test OpenCV installation
@@ -207,15 +221,19 @@ int main() {
 
 	// Send Action Command
 	char key = 0;
+	int count = 0;
 	while (key != 27) // press ESC to exit
 	{
 		if (key == 32) // press SPACE to pause and store image
 		{
-			cout << "press Enter tp continue" << endl;
-			imwrite("C:\\Users\\NOL\\Desktop\\0.png", pOb0->cvMat);
-			imwrite("C:\\Users\\NOL\\Desktop\\1.png", pOb0->cvMat);
+			cout << "press Enter to continue" << endl;
+			string name0 = "calib\\0\\" + to_string(count) + ".png";
+			string name1 = "calib\\1\\" + to_string(count) + ".png";
+			imwrite(name0, pOb0->cvMat);
+			imwrite(name1, pOb1->cvMat);
 			cin.ignore();
 			key = 0;
+			count++;
 		}
 		// Set Action Command to Vimba API
 		sys.GetFeatureByName("ActionDeviceKey", pFeature);
@@ -254,27 +272,172 @@ int main() {
 	return 0;
 }
 
+int main()
+{
+    Mat frame;
+	string filepath = "calib\\1\\";
+    string filename = filepath + "cmx_dis.xml";
+	cout << filename << endl;
+    FileStorage fs(filename, FileStorage::WRITE);
+	cout << "good" << endl;
+    
+    // File found
+    if (fs.isOpened()) {
+        // Image buffer
+        vector<Mat> images;
+        int count = 0;
+        
+        // Calibration loop
+        while (1) {
+            // Get an image
+			frame = imread(filepath + to_string(count) + ".png", -1);
+            if(frame.empty())
+                break;
+			cv::cvtColor(frame, frame, CV_BayerBG2BGR);
+            
+            // Convert to grayscale
+            cv::Mat gray;
+            cv::cvtColor(frame, gray, CV_BGR2GRAY);
+            
+            // Detect a chessboard
+            cv::Size size(PAT_COLS, PAT_ROWS);
+            std::vector<cv::Point2f> corners;
+            bool found = cv::findChessboardCorners(gray, size, corners, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE | cv::CALIB_CB_FAST_CHECK);
+            
+            // Chessboard detected
+            if (found) {
+                // Draw it
+                cv::drawChessboardCorners(frame, size, corners, found);
 
+				// Show the image
+				//std::ostringstream stream;
+				//stream << "Captured " << images.size() << " image(s).";
+				//cv::putText(frame, stream.str(), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1, 1);
+				//cv::imshow("Camera Calibration", frame);
+				//waitKey(0);
+				images.push_back(gray);
+            }
+			count++;
+        }
+		destroyAllWindows();
+		cout << "Start calibration" << endl;
+        
+        // We have enough samples
+        if (images.size() > 4) {
+            cv::Size size(PAT_COLS, PAT_ROWS);
+            std::vector< std::vector<cv::Point2f> > corners2D;
+            std::vector< std::vector<cv::Point3f> > corners3D;
+            
+            for (size_t i = 0; i < images.size(); i++) {
+                // Detect a chessboard
+                std::vector<cv::Point2f> tmp_corners2D;
+                bool found = cv::findChessboardCorners(images[i], size, tmp_corners2D);
+                
+                // Chessboard detected
+                if (found) {
+                    // Convert the corners to sub-pixel
+                    cv::cornerSubPix(images[i], tmp_corners2D, cvSize(11, 11), cvSize(-1, -1), cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::COUNT, 30, 0.1));
+                    corners2D.push_back(tmp_corners2D);
+                    
+                    // Set the 3D position of patterns
+                    const float squareSize = CHESS_SIZE;
+                    std::vector<cv::Point3f> tmp_corners3D;
+                    for (int j = 0; j < size.height; j++) {
+                        for (int k = 0; k < size.width; k++) {
+                            tmp_corners3D.push_back(cv::Point3f((float)(k*squareSize), (float)(j*squareSize), 0.0));
+                        }
+                    }
+                    corners3D.push_back(tmp_corners3D);
+                }
+            }
+            
+            // Estimate camera parameters
+            cv::Mat cameraMatrix, distCoeffs;
+            std::vector<cv::Mat> rvec, tvec;
+            cv::calibrateCamera(corners3D, corners2D, images[0].size(), cameraMatrix, distCoeffs, rvec, tvec);
+            std::cout << cameraMatrix << std::endl;
+            std::cout << distCoeffs << std::endl;
+            
+            // Save them
+            //cv::FileStorage tmp(filename, cv::FileStorage::WRITE);
+			fs << "intrinsic" << cameraMatrix;
+			fs << "distortion" << distCoeffs;
+			fs.release();
+            
+            // Reload
+            fs.open(filename, cv::FileStorage::READ);
+        }
+        
+        // Destroy windows
+        cv::destroyAllWindows();
+    }
+	else {
+		cout << "Open file error...." << endl;
+		getchar();
+		return -1;
+	}
 
-// int main() {
+    // Load camera parameters
+    cv::Mat cameraMatrix, distCoeffs;
+    fs["intrinsic"] >> cameraMatrix;
+    fs["distortion"] >> distCoeffs;
+    
+    // Create undistort map
+	Mat image_raw = imread(filepath + "0.png", -1);
+	if (image_raw.empty())
+		return -1;
+	cv::cvtColor(image_raw, image_raw, CV_BayerBG2BGR);
 
-// 	Mat img0, img1;
-// 	img0 = imread("C:\\Users\\NOL\\Desktop\\0.png", -1);
-// 	img1 = imread("C:\\Users\\NOL\\Desktop\\1.png", -1);
-// 	cvtColor(img0, img0, CV_BayerBG2BGR);
-// 	cvtColor(img1, img1, CV_BayerBG2BGR);
+    cv::Mat mapx, mapy;
+    cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Mat(), cameraMatrix, image_raw.size(), CV_32FC1, mapx, mapy);
+    
+    // Main loop
+	int count = 0;
+    while (1) {
+        // Key input
+        int key = cv::waitKey(33);
+        if (key == 0x1b) break;
+        
+        // Get an image
+        //cv::Mat image_raw = GP.getImage();
+        //Mat image_raw = cap.read();
+		image_raw = imread(filepath + to_string(count) + ".png", -1);
+		if (image_raw.empty())
+			break;
+		cv::cvtColor(image_raw, image_raw, CV_BayerBG2BGR);
+        
+        // Undistort
+        cv::Mat image;
+        cv::remap(image_raw, image, mapx, mapy, cv::INTER_LINEAR);
+        
+        // Display the image
+		cv::imshow("camera", image);
+		cv::imwrite(filepath + to_string(count) + "c.png", image);
+		count++;
+    }
+    
+    return 0;
+}
 
-// 	img0 = PerfectReflectionAlgorithm(img0);
-// 	img1 = PerfectReflectionAlgorithm(img1);
-// 	imwrite("C:\\Users\\NOL\\Desktop\\0b.png", img0);
-// 	imwrite("C:\\Users\\NOL\\Desktop\\1b.png", img1);
-
-// 	imshow("0", img0);
-// 	imshow("1", img1);
-// 	waitKey(0);
-
-// 	return 0;
-// }
+//int main() {
+//
+//	Mat img0, img1;
+//	img0 = imread("C:\\Users\\NOL\\Desktop\\0.png", -1);
+//	img1 = imread("C:\\Users\\NOL\\Desktop\\1.png", -1);
+//	cvtColor(img0, img0, CV_BayerBG2BGR);
+//	cvtColor(img1, img1, CV_BayerBG2BGR);
+//
+//	img0 = PerfectReflectionAlgorithm(img0);
+//	img1 = PerfectReflectionAlgorithm(img1);
+//	imwrite("C:\\Users\\NOL\\Desktop\\0b.png", img0);
+//	imwrite("C:\\Users\\NOL\\Desktop\\1b.png", img1);
+//
+//	imshow("0", img0);
+//	imshow("1", img1);
+//	waitKey(0);
+//
+//	return 0;
+//}
 
 //int main() {
 //
