@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="MutiCam">
+        <file>AsynchronousOpenCVRecorder.png</file>
+    </qresource>
+</RCC>
