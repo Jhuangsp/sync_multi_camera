@@ -151,6 +151,7 @@ VmbErrorType ApiController::StartContinuousImageAcquisition( const std::vector<s
 	}
     if( VmbErrorSuccess == res )
     {
+
         // Set the GeV packet size to the highest possible value
         // (In this example we do not test whether this cam actually is a GigE cam)
 		std::cout << "Adjust Packet Size" << std::endl;
@@ -180,7 +181,7 @@ VmbErrorType ApiController::StartContinuousImageAcquisition( const std::vector<s
 			std::cout << "Adjust Frame Rate" << std::endl;
 			for (int i = 0; i < num_cam; i++) {
 				m_FPS = 15.0;
-				FeaturePtr pFeatureFPS;
+				FeaturePtr pFeatureFPS;  
 				res = SP_ACCESS(m_pCameras[i])->GetFeatureByName("AcquisitionFrameRateAbs", pFeatureFPS);
 				if (VmbErrorSuccess != res)
 				{
@@ -189,7 +190,7 @@ VmbErrorType ApiController::StartContinuousImageAcquisition( const std::vector<s
 				}
 				if (VmbErrorSuccess == res)
 				{
-					res = SP_ACCESS(pFeatureFPS)->GetValue(m_FPS);
+					res = SP_ACCESS(pFeatureFPS)->SetValue(m_FPS);
 				}
 			}
 			FeaturePtr pFeature;       // Any camera feature
@@ -235,52 +236,20 @@ VmbErrorType ApiController::StartContinuousImageAcquisition( const std::vector<s
 				FeaturePtr pFormatFeature;
 				res = SP_ACCESS(m_pCameras[i])->GetFeatureByName("PixelFormat", pFormatFeature);
 				if (VmbErrorSuccess == res) {
-					res = SP_ACCESS(pFormatFeature)->GetValue(m_nPixelFormat);
+					res = SP_ACCESS(pFormatFeature)->GetValue(m_nPixelFormat); // RGBBBBBBBBBBBBBBBBBB
 				}
 				else break;
 			}
 			if (VmbErrorSuccess == res)
 			{
-				std::cout << "Create Ovservers" << std::endl;
+				std::cout << "Create Obvservers" << std::endl;
 				for (int i = 0; i < num_cam; i++) {
 					// Create a frame observer for this camera (This will be wrapped in a shared_ptr so we don't delete it)
 					SP_SET(m_pFrameObserver, new FrameObserver(m_pCameras[i], i));
 					m_pFrameObservers.push_back(m_pFrameObserver);
 				}
 
-				//std::cout << "Start Continuous Image Acquisition" << std::endl;
-				//for (int i = 0; i < num_cam; i++) {
-				//	// Start streaming
-				//	res = SP_ACCESS(m_pCameras[i])->StartContinuousImageAcquisition(NUM_FRAMES, m_pFrameObservers[i]);
-				//}
-				//std::cout << "Done" << std::endl;
-
-				//for (int i = 0; i < num_cam; i++) {
-				//	FramePtrVector tmp(NUM_FRAMES);
-				//	framesVect.push_back(tmp);
-				//	// Register the observer before queuing the frame
-				//	std::cout << "Register Ovservers" << i << std::endl;
-				//	for (FramePtrVector::iterator iter = framesVect[i].begin();
-				//		framesVect[i].end() != iter;
-				//		++iter)
-				//	{
-				//		(*iter).reset(new Frame(nPLS[i]));
-				//		res = (*iter)->RegisterObserver(m_pFrameObservers[i]); 
-				//		res = m_pCameras[i]->AnnounceFrame(*iter);
-				//	}
-				//	// StartCapture
-				//	res = m_pCameras[i]->StartCapture();
-				//	// QueueFrame
-				//	for (FramePtrVector::iterator iter = framesVect[i].begin();
-				//		framesVect[i].end() != iter;
-				//		++iter)
-				//	{
-				//		res = m_pCameras[i]->QueueFrame(*iter);
-				//	}
-				//	// AcquisitionStart
-				//	//res = m_pCameras[i]->GetFeatureByName("AcquisitionStart", pFeature);
-				//	//res = pFeature->RunCommand();
-				//}
+				
 				std::cout << "Start Continuous Image Acquisition" << std::endl;
 				for (int i = 0; i < num_cam; i++) {
 					// Start streaming
@@ -304,6 +273,7 @@ VmbErrorType ApiController::StartContinuousImageAcquisition( const std::vector<s
 VmbErrorType ApiController::StopContinuousImageAcquisition()
 {
     // Stop streaming
+	std::cout << "stop : " << clock();
 	VmbErrorType f_res = VmbErrorSuccess;
 	for (int i = 0; i < m_pCameras.size(); i++)	{
 		m_pCameras[i]->StopContinuousImageAcquisition();
@@ -312,6 +282,7 @@ VmbErrorType ApiController::StopContinuousImageAcquisition()
 			f_res = res;
 		}
 	}
+	std::cout << "stop\n";
     //m_pCamera->StopContinuousImageAcquisition();
 
     // Close camera

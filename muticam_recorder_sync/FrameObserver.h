@@ -75,6 +75,7 @@ class FrameObserver : public QObject, virtual public IFrameObserver
     // Since a Qt signal cannot contain a whole frame
     // the frame observer stores all FramePtr
     std::queue<FramePtr> m_Frames;
+	
     QMutex m_FramesMutex;
 	int observer_id;
 

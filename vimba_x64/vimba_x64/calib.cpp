@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     while (1) {
         // Key input
         int key = cv::waitKey(33);
-        if (key == 0x1b) break;
+        if (key == 0x1b) break; //esc
         
         // Get an image
         //cv::Mat image_raw = GP.getImage();
